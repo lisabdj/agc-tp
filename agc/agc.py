@@ -19,17 +19,18 @@ import os
 import gzip
 import statistics
 from collections import Counter
+from operator import itemgetter
 # https://github.com/briney/nwalign3
 # ftp://ftp.ncbi.nih.gov/blast/matrices/
 import nwalign3 as nw
 
-__author__ = "Your Name"
+__author__ = "BOUARROUDJ Lisa"
 __copyright__ = "Universite Paris Diderot"
-__credits__ = ["Your Name"]
+__credits__ = ["BOUARROUDJ Lisa"]
 __license__ = "GPL"
 __version__ = "1.0.0"
-__maintainer__ = "Your Name"
-__email__ = "your@email.fr"
+__maintainer__ = "BOUARROUDJ Lisa"
+__email__ = "lisa.bdj.95@gmail.com"
 __status__ = "Developpement"
 
 
@@ -70,11 +71,46 @@ def get_arguments():
     return parser.parse_args()
 
 def read_fasta(amplicon_file, minseqlen):
-    pass
+    """Lit un fichier fasta.gz et renvoie les séquences.
+      :Paramètres:
+          amplicon_file: fichier au format fasta.gz
+          minseqlen: longueur minimale des séquences
+      Retourne:
+          Générateur de séquences de longueur minimale
+    """
+    with gzip.open(amplicon_file, "rt") as filin:
+        seq = ""
+        for line in filin:
+            if line[0] == ">":
+                if len(seq) > minseqlen:
+                    yield seq
+                seq= ""
+            elif len(line) > 0:
+                seq += line.strip()
+        if len(seq) > minseqlen:
+            yield seq
+
 
 
 def dereplication_fulllength(amplicon_file, minseqlen, mincount):
-    pass
+    """Identifie les séquences uniques avec un nombre d'occurrence minimal.
+      :Paramètres:
+          amplicon_file: fichier au format fasta.gz
+          minseqlen: longueur minimale des séquences
+          mincount: nombre minimal d'occurrence
+      Retourne:
+          Générateur de séquences uniques ayant un nombre d'occurrence minimal
+    """
+    liste_seq = [] 
+    sequences = read_fasta(amplicon_file, minseqlen)
+    for seq in sequences:
+        liste_seq.append(seq)
+    occurrences = [[x, liste_seq.count(x)] for x in set(liste_seq)]
+    occurrences = sorted(occurrences, key=itemgetter(1), reverse=True)
+    for occ in occurrences:
+        if occ[1] >= mincount:
+            print(occ)
+            #yield occ
 
 
 def get_unique(ids):
@@ -114,7 +150,8 @@ def chimera_removal(amplicon_file, minseqlen, mincount, chunk_size, kmer_size):
     pass
 
 def abundance_greedy_clustering(amplicon_file, minseqlen, mincount, chunk_size, kmer_size):
-    pass
+    
+    return 
 
 def fill(text, width=80):
     """Split text with a line return to respect fasta format"""
@@ -133,7 +170,13 @@ def main():
     # Get arguments
     args = get_arguments()
     # Votre programme ici
-
-
+    #sequence=read_fasta(args.amplicon_file,200)
+    #for seq in sequence:
+    #    print(seq)
+    #read_fasta(args.amplicon_file, 500)
+    dereplication_fulllength(args.amplicon_file, 500,1)
+    #print(occ)
+    #for o in occ:
+    #    print(o)
 if __name__ == '__main__':
     main()
