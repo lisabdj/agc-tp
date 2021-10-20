@@ -23,13 +23,13 @@ from collections import Counter
 # ftp://ftp.ncbi.nih.gov/blast/matrices/
 import nwalign3 as nw
 
-__author__ = "BOUARROUDJ Lisa"
+__author__ = "BOUARROUDJ Lisa & SOULA Sarah"
 __copyright__ = "Universite Paris Diderot"
-__credits__ = ["BOUARROUDJ Lisa"]
+__credits__ = ["BOUARROUDJ Lisa & SOULA Sarah"]
 __license__ = "GPL"
 __version__ = "1.0.0"
-__maintainer__ = "BOUARROUDJ Lisa"
-__email__ = "lisa.bdj.95@gmail.com"
+__maintainer__ = "BOUARROUDJ Lisa & SOULA Sarah"
+__email__ = "lisa.bdj.95@gmail.com & spequez@gmail.com"
 __status__ = "Developpement"
 
 
@@ -78,7 +78,6 @@ def read_fasta(amplicon_file, minseqlen):
           Générateur de séquences de longueur minimale
     """
     with gzip.open(amplicon_file, "rt") as filin:
-        print("ouvre fichier")
         seq = ""
         #count = 0
         for line in filin:
@@ -105,20 +104,14 @@ def dereplication_fulllength(amplicon_file, minseqlen, mincount):
       Retourne:
           Générateur de séquences uniques ayant un nombre d'occurrence minimal
     """
-
-
     seqs = read_fasta(amplicon_file, minseqlen)
     occurrences= {}
-
     for seq in seqs:
         if seq in occurrences:
             occurrences[seq]+=1
         else:
             occurrences[seq]=1
-
     occurrences = sorted(occurrences.items(), key=lambda t: t[1] , reverse=True)
-    #print("Length :", len(occurrences))
-    print("liste crée")
     for i in range(len(occurrences)):
         if occurrences[i][1] >= mincount:
             yield [occurrences[i][0],occurrences[i][1]]
@@ -134,7 +127,7 @@ def common(lst1, lst2):
 
 
 def get_chunks(sequence, chunk_size):
-    """"""
+    """Donne une liste de chunks non chevauchants"""
     len_seq = len(sequence)
     if len_seq < chunk_size * 4:
         raise ValueError("Sequence length ({}) is too short to be splitted in 4"
@@ -159,7 +152,7 @@ def get_identity(alignment_list):
     return round(100.0 * id_nu / len(alignment_list[0]), 2)
 
 def get_unique_kmer(kmer_dict, sequence, id_seq, kmer_size):
-    """
+    """Recense tous les k-mers présents dans les séquences non-chimériques.
       :Paramètres:
           kmer_dict: dictionnaire de kmers présents dans les séquences non-chimériques
           sequence: séquence
@@ -178,7 +171,7 @@ def get_unique_kmer(kmer_dict, sequence, id_seq, kmer_size):
 
 
 def search_mates(kmer_dict, sequence, kmer_size):
-    """
+    """Cherche les 2 séquences parentes.
       :Paramètres:
           kmer_dict: dictionnaire de kmers présents dans les séquences non-chimériques
           sequence: séquence
@@ -199,28 +192,27 @@ def search_mates(kmer_dict, sequence, kmer_size):
     return liste_seq
 
 def detect_chimera(perc_identity_matrix):
-    """
+    """Indique si la séquence est une chimère, ou non.
       :Paramètre:
           perc_identity_matrix: matrice avec le taux d'identité entre la
           séquence candidate et deux séquences parentes
       Retourne:
           booléen indiquant si la séquence candidate est une chimère ou non
     """
-
     mat = []
-    seq=1
-    seq_bool=0
+    seq = 1
+    seq_bool = 0
     for i in range (len(perc_identity_matrix)):
         mat.append(statistics.stdev(perc_identity_matrix[i]))
-        if statistics.mean(mat)>5:
-            if perc_identity_matrix[0][0]<perc_identity_matrix[0][1]:
-                seq=2
+        if statistics.mean(mat) > 5:
+            if perc_identity_matrix[0][0] < perc_identity_matrix[0][1]:
+                seq = 2
             for i in range (1,len(perc_identity_matrix)):
-                if perc_identity_matrix[i][0]<perc_identity_matrix[i][1]:
-                    seq_bool=2
+                if perc_identity_matrix[i][0] < perc_identity_matrix[i][1]:
+                    seq_bool = 2
                 else:
-                    seq_bool=1
-                if seq_bool!=seq:
+                    seq_bool = 1
+                if seq_bool != seq:
                     return True
     return False
 
@@ -237,7 +229,7 @@ def std(data):
 
 
 def chimera_removal(amplicon_file, minseqlen, mincount, chunk_size, kmer_size):
-    """
+    """Retourne les séquences non-chimériques
       :Paramètres:
           amplicon_file: fichier au format fasta.gz
           minseqlen: longueur minimale des séquences
@@ -245,11 +237,9 @@ def chimera_removal(amplicon_file, minseqlen, mincount, chunk_size, kmer_size):
           chunk_size: longueur des chunks
           kmer_size: longueur des kmers
       Retourne:
-          :
+          Générateur de séquences non-chimériques
     """
     gene_seq = list(dereplication_fulllength(amplicon_file, minseqlen, mincount))
-    print("dereplication")
-    print("Length derep :", len(gene_seq))
     non_chimer = []
     non_chimer.append(gene_seq[0])
     non_chimer.append(gene_seq[1])
@@ -266,17 +256,15 @@ def chimera_removal(amplicon_file, minseqlen, mincount, chunk_size, kmer_size):
             align1 = nw.global_align(seq0[j],seq1[j], gap_open=-1, gap_extend=-1, matrix=os.path.abspath(os.path.join(os.path.dirname(__file__),"MATCH")))
             align2 = nw.global_align(seq0[j],seq2[j], gap_open=-1, gap_extend=-1, matrix=os.path.abspath(os.path.join(os.path.dirname(__file__),"MATCH")))
             mat_ident.append([get_identity([align1[0],align1[1]]),get_identity([align2[0],align2[1]])])
-            print()
         if not  detect_chimera(mat_ident):
             non_chimer.append(gene_seq[i])
-            print("chimera length :", len(non_chimer))
         mat_ident = []
     for i in range(len(non_chimer)):
         yield non_chimer[i]
 
 
 def abundance_greedy_clustering(amplicon_file, minseqlen, mincount, chunk_size, kmer_size):
-    """
+    """Retourne la liste d'OTU.
       :Paramètres:
           amplicon_file: fichier au format fasta.gz
           minseqlen: longueur minimale des séquences
@@ -286,9 +274,7 @@ def abundance_greedy_clustering(amplicon_file, minseqlen, mincount, chunk_size, 
       Retourne:
           list_otu: liste d'OTU avec le nombre d'occurences
     """
-
     sequence_non_chimer = list(chimera_removal(amplicon_file, minseqlen, mincount, chunk_size, kmer_size))
-    print("abudance!!!")
     otu_liste = []
     otu_liste.append(sequence_non_chimer[0])
     for i in range(1,len(sequence_non_chimer)):
@@ -298,11 +284,8 @@ def abundance_greedy_clustering(amplicon_file, minseqlen, mincount, chunk_size, 
             if get_identity(align) > 97:
                 flag = False
                 break
-            
         if flag is True:
             otu_liste.append(sequence_non_chimer[i])
-            print(len(otu_liste))
-
     return otu_liste
 
 
@@ -311,7 +294,7 @@ def fill(text, width=80):
     return os.linesep.join(text[i:i+width] for i in range(0, len(text), width))
 
 def write_OTU(OTU_list, output_file):
-    """
+    """Création du fichier de sortie.
       :Paramètres:
           OTU_list: liste d'OTU
           output_file: chemin vers le fichier de sortie
@@ -332,7 +315,8 @@ def main():
     """
     # Get arguments
     args = get_arguments()
-    # Votre programme ici
+
+    # Programme
     liste_otu = abundance_greedy_clustering(args.amplicon_file, args.minseqlen, args.mincount, args.chunk_size, args.kmer_size)
     write_OTU(liste_otu, args.output_file)
 
